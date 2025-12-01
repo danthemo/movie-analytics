@@ -35,3 +35,24 @@ func (r *MovieRepository) UpdateMovie(movie *models.Movie) error {
 func (r *MovieRepository) DeleteMovie(id uint) error {
 	return r.DB.Delete(&models.Movie{}, id).Error
 }
+
+// Получить все фильмы
+func (r *MovieRepository) GetAllMovies() ([]models.Movie, error) {
+	var movies []models.Movie
+	err := r.DB.Preload("Comments").Find(&movies).Error
+	return movies, err
+}
+
+// Поиск по названию для парсера
+func (r *MovieRepository) FindByTitle(title string) ([]models.Movie, error) {
+	var movies []models.Movie
+	err := r.DB.Where("title = ?", title).Find(&movies).Error
+	return movies, err
+}
+
+// Поиск по названию для пользователя
+func (r *MovieRepository) SearchByTitle(query string) ([]models.Movie, error) {
+	var movies []models.Movie
+	err := r.DB.Where("title ILIKE ?", "%"+query+"%").Find(&movies).Error
+	return movies, err
+}

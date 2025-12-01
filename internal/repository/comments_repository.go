@@ -14,6 +14,11 @@ func NewRawCommentsRepository(db *gorm.DB) *RawCommentsRepository {
 	return &RawCommentsRepository{DB: db}
 }
 
+// Создание нового комментария
+func (r *RawCommentsRepository) CreateComment(comment *models.RawComment) error {
+	return r.DB.Create(comment).Error
+}
+
 // Получить комментарии по ID фильма
 func (r *RawCommentsRepository) GetCommentsByMovieID(movieId uint) ([]models.RawComment, error) {
 	var comments []models.RawComment

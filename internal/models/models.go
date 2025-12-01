@@ -14,13 +14,13 @@ type Movie struct {
 	PosterUrl   string       `gorm:"type:text"`
 	TrailerUrl  string       `gorm:"type:text"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime"`
-	Comments    []RawComment `gorm:"foreignKey:MovieID"`
+	Comments    []RawComment `gorm:"foreignKey:MovieID;constraint:OnDelete:CASCADE"`
 }
 
 type RawComment struct {
 	ID        uint `gorm:"primaryKey"`
 	MovieID   uint
-	Movie     Movie     `gorm:"foreignKey:Movie_ID;references:ID"`
+	Movie     Movie     `gorm:"foreignKey:MovieID;references:ID"`
 	Source    string    `gorm:"type:text"`
 	Author    string    `gorm:"type:text"`
 	Text      string    `gorm:"type:text"`
@@ -29,7 +29,7 @@ type RawComment struct {
 
 type MovieInsight struct {
 	MovieID      uint  `gorm:"primaryKey"`
-	Movie        Movie `gorm:"foreignKey:Movie_ID;references:ID"`
+	Movie        Movie `gorm:"foreignKey:MovieID;references:ID"`
 	AvgSentiment float64
 	Summary      string `gorm:"type:text"`
 	TopPositive  datatypes.JSON
