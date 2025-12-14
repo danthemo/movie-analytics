@@ -42,27 +42,23 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/scrape", scrapeHandler.ScrapeMovie)
-	// mux.HandleFunc("/api/movies", moviesHandler.ListMovies)
-	// mux.HandleFunc("/api/movies/get", moviesHandler.GetMovie)
-	// Или переименуй маршрут на правильный:
 	mux.HandleFunc("/api/movies", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
-			// ✅ Удаление
+			// Удаление
 			moviesHandler.DeleteMovie(w, r)
 		} else if r.URL.Query().Get("id") != "" {
-			// ✅ Получение одного фильма по ID
+			// Получение одного фильма по ID
 			moviesHandler.GetMovie(w, r)
 		} else {
-			// ✅ Список всех фильмов
+			// Список всех фильмов
 			moviesHandler.ListMovies(w, r)
 		}
 	})
 
 	mux.HandleFunc("/api/search", moviesHandler.SearchMovies)
-	// mux.HandleFunc("/api/movies/delete", moviesHandler.DeleteMovie)
 	mux.HandleFunc("/api/movies/insights", moviesHandler.GetMovieInsights)
 
-	// ===== CORS Middleware =====
+	// CORS Middleware
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:3000", "*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

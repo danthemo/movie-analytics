@@ -72,7 +72,7 @@ func (s *InsightService) GenerateSummary(movieID uint) (*models.MovieInsight, er
 	}
 	defer resp.Body.Close()
 
-	// ✅ Проверяем статус
+	// Проверяем статус
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
@@ -87,7 +87,7 @@ func (s *InsightService) GenerateSummary(movieID uint) (*models.MovieInsight, er
 	}
 	json.NewDecoder(resp.Body).Decode(&aiResp)
 
-	// ✅ Проверяем пустой массив
+	// Проверяем пустой массив
 	if len(aiResp.Choices) == 0 {
 		return nil, fmt.Errorf("no choices in API response")
 	}
@@ -105,7 +105,6 @@ func (s *InsightService) GenerateSummary(movieID uint) (*models.MovieInsight, er
 					rating = r
 				}
 			}
-			// ✅ УДАЛИ СТРОКУ С ОЦЕНКОЙ ИЗ SUMMARY
 			summary = strings.Join(lines[:i], "\n")
 			break
 		}

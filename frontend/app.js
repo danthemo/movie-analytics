@@ -4,13 +4,13 @@ let searchTimeout;
 let isAdminLoggedIn = false;
 
 
-// ===== Navigation =====
+// Навигация
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
 
 
-    // Update nav
+    // Активный пункт навигации
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     if (pageId === 'home-page') document.getElementById('nav-home').classList.add('active');
     if (pageId === 'scrape-page') document.getElementById('nav-scrape').classList.add('active');
@@ -47,7 +47,7 @@ function showAdmin() {
 }
 
 
-// ===== API Calls =====
+// Вызовы АПИ
 async function loadMovies() {
     try {
         const response = await fetch(`${API_URL}/api/movies`);
@@ -188,13 +188,12 @@ async function submitScrape(event) {
 }
 
 
-// ===== Admin Functions =====
+// функици администратора
 function submitAdminLogin(event) {
     event.preventDefault();
     
     const password = document.getElementById('admin-password').value;
     
-    // ✅ Замени 'your-admin-password' на свой пароль
     if (password === '1234') {
         isAdminLoggedIn = true;
         document.getElementById('admin-password').value = '';
@@ -285,7 +284,7 @@ async function deleteMovieAdmin(movieId) {
 }
 
 
-// ===== Rendering =====
+// Рендер
 function renderMovies(movies) {
     const container = document.getElementById('movies-container');
     
@@ -365,7 +364,7 @@ function renderMovieDetail(movie) {
             </div>
         `;
     
-    // ===== Comments HTML =====
+    // Комментарии
     let commentsHtml = '';
     if (comments.length > 0) {
         commentsHtml = `
@@ -397,7 +396,7 @@ function renderMovieDetail(movie) {
         `;
     }
     
-    // ===== AI Insights HTML =====
+    // ИИ сводка
     let insightHtml = '';
     if (movie?.insight && movie.insight.summary) {
         const rating = movie.insight.rating || 0;
@@ -421,7 +420,7 @@ function renderMovieDetail(movie) {
         `;
     }
     
-    // ===== Main Render =====
+    // Рендерим всё вместе
     document.getElementById('detail-content').innerHTML = `
         <div class="movie-detail">
             <div class="detail-header">
@@ -482,7 +481,7 @@ ${movie.description || 'Описание отсутствует'}
 }
 
 
-// ===== Toast Notifications =====
+// Уведомления
 function showToast(text, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -499,7 +498,7 @@ function showToast(text, type = 'info') {
 }
 
 
-// ===== Utils =====
+// Сообщения на страницах
 function showMessage(pageId, text, type = 'info') {
     const messageEl = document.getElementById(`${pageId}-message`) || 
                      document.querySelector(`#${pageId} .message-container`);
@@ -517,5 +516,5 @@ function clearMessages(elementId) {
 }
 
 
-// ===== Init =====
+// Инициализация
 document.addEventListener('DOMContentLoaded', loadMovies);

@@ -14,7 +14,7 @@ func NewMovieInsightRepository(db *gorm.DB) *MovieInsightRepository {
 	return &MovieInsightRepository{DB: db}
 }
 
-// Создание новой записи инсайта - хз вот, надо ли?
+// Создание новой записи инсайта
 func (r *MovieInsightRepository) CreateInsight(insight *models.MovieInsight) error {
 	return r.DB.Create(insight).Error
 }

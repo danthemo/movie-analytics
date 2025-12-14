@@ -37,7 +37,6 @@ def parse_okko_film_info(query):
         page.goto(film_url)
         page.wait_for_selector('h1', timeout=10000)
 
-        # ✅ ПАРСИМ ПОСТЕР НА СТРАНИЦЕ ФИЛЬМА (а не на поиске!)
         poster_element = page.query_selector('picture source')
         if poster_element:
             srcset = poster_element.get_attribute('srcset')
@@ -45,13 +44,13 @@ def parse_okko_film_info(query):
                 poster_url = srcset.split(' ')[0]
                 if poster_url:
                     film_info['poster_url'] = poster_url
-                    print(f"✅ Постер найден: {poster_url}")
+                    print(f"Постер найден: {poster_url}")
                 else:
-                    print("❌ srcset пуст")
+                    print("srcset пуст")
             else:
-                print("❌ srcset не найден")
+                print("srcset не найден")
         else:
-            print("❌ picture source не найден на странице фильма")
+            print("picture source не найден на странице фильма")
 
         # Название
         title_element = page.query_selector('h1')
@@ -86,48 +85,6 @@ def parse_okko_film_info(query):
         browser.close()
         return film_info
     
-# Пример использования
-# info = parse_okko_film_info("мстители")
-# print(info)
-
-
-# def parse_okko_reviews(query):
-#     query_encoded = quote(query)
-#     search_url = f"https://okko.tv/search/{query_encoded}"
-
-#     with sync_playwright() as p:
-#         browser = p.chromium.launch(headless=True)
-#         page = browser.new_page()
-#         page.goto(search_url)
-        
-#         # Ждем результатов поиска
-#         page.wait_for_selector('a.vj8iwpkR', timeout=10000)
-        
-#         # Ссылка на фильм
-#         links = page.query_selector_all('div.Oce5ukhe a.vj8iwpkR')
-#         film_link = None
-#         for l in links:
-#             text = clean_text(l.inner_text().lower())
-#             if query.lower() in text:
-#                 film_link = l.get_attribute("href")
-#                 break
-        
-#         if not film_link:
-#             browser.close()
-#             return []  # Фильм не найден
-        
-#         # Переходим на страницу фильма
-#         film_url = f"https://okko.tv{film_link}/reviews"
-#         page.goto(film_url)
-#         page.wait_for_selector('div.GLR27TKM', timeout=10000)
-        
-#         # Сбор отзывов
-#         review_elements = page.query_selector_all('div.GLR27TKM.bUhuFIH2.KaAZjIfH')
-#         reviews = [clean_text(r.inner_text()) for r in review_elements if clean_text(r.inner_text())]
-
-#         browser.close()
-#         return reviews
-
 def parse_okko_reviews(query):
     query_encoded = quote(query)
     search_url = f"https://okko.tv/search/{query_encoded}"
@@ -153,9 +110,8 @@ def parse_okko_reviews(query):
         
         film_url = f"https://okko.tv{film_link}/reviews"
         page.goto(film_url)
-        page.wait_for_timeout(3000)  # Жди загрузки страницы
+        page.wait_for_timeout(3000)
         
-        # ✅ НОВЫЙ СЕЛЕКТОР - ищи все divы с классом отзыва
         review_elements = page.query_selector_all('div.GLR27TKM')
         reviews = [clean_text(r.inner_text()) for r in review_elements if clean_text(r.inner_text())]
         
@@ -163,6 +119,3 @@ def parse_okko_reviews(query):
         return reviews
 
 
-# # Пример использования
-# reviews = parse_okko_reviews("мстители")
-# print(reviews)

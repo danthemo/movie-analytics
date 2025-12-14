@@ -34,7 +34,7 @@ body {
     flex-direction: column;
 }
 
-/* Header */
+/* Хедер */
 header {
     background-color: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
@@ -90,7 +90,7 @@ nav button.active {
     border-bottom: 2px solid var(--color-accent);
 }
 
-/* Main Content */
+/* Основной контент */
 main {
     flex: 1;
     max-width: 1200px;
@@ -99,7 +99,7 @@ main {
     padding: var(--spacing-lg);
 }
 
-/* Pages */
+/* Страницы */
 .page {
     display: none;
 }
@@ -114,7 +114,7 @@ main {
     to { opacity: 1; }
 }
 
-/* Search Section */
+/* Поиск */
 .search-section {
     margin-bottom: var(--spacing-lg);
 }
@@ -185,7 +185,7 @@ main {
     cursor: not-allowed;
 }
 
-/* Movie Grid */
+/* Сетка фильмов */
 .movies-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -210,7 +210,7 @@ main {
 
 .movie-poster {
     width: 100%;
-    aspect-ratio: 16/9;  /* ✅ 400×225 это 16:9 */
+    aspect-ratio: 16/9;
     background-color: var(--color-bg);
     display: flex;
     align-items: center;
@@ -245,7 +245,7 @@ main {
     font-size: 13px;
 }
 
-/* Detail Page */
+/* Страница фильма */
 .movie-detail {
     max-width: 900px;
     margin: 0 auto;
@@ -258,12 +258,12 @@ main {
 }
 
 .detail-poster {
-    width: 400px;  /* ✅ ЗАФИКСИРОВАНА ШИРИНА */
-    height: 225px;  /* ✅ ЗАФИКСИРОВАНА ВЫСОТА */
+    width: 400px; 
+    height: 225px;
     background-color: var(--color-surface);
     border-radius: var(--radius);
     overflow: hidden;
-    flex-shrink: 0;  /* ✅ Не сжимается */
+    flex-shrink: 0; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -300,7 +300,7 @@ main {
     margin-bottom: var(--spacing-lg);
 }
 
-/* Back Button */
+/* Кнопка назад */
 .back-btn {
     display: inline-flex;
     align-items: center;
@@ -320,7 +320,7 @@ main {
     transform: translateX(-4px);
 }
 
-/* Scrape Form */
+/* Форма для парсинга */
 .scrape-form {
     background-color: var(--color-surface);
     padding: var(--spacing-lg);
@@ -364,7 +364,7 @@ main {
     min-height: 100px;
 }
 
-/* Loading & Messages */
+/* Сообщения и прогрузка */
 .loading {
     display: flex;
     align-items: center;
@@ -414,7 +414,7 @@ main {
     border: 1px solid var(--color-accent);
 }
 
-/* Empty State */
+/*  */
 .empty-state {
     text-align: center;
     padding: var(--spacing-lg) * 2;
@@ -426,7 +426,7 @@ main {
     margin-bottom: var(--spacing-md);
 }
 
-        /* Toast Notifications */
+        /* Уведомления */
         .toast {
             position: fixed;
             bottom: var(--spacing-lg);
@@ -501,7 +501,7 @@ main {
             }
         }
 
-/* Responsive */
+/*  */
 @media (max-width: 768px) {
     .detail-header {
         flex-direction: column;
