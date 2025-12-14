@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Analytics - Поиск и анализ фильмов</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a class="logo" onclick="showHome()">🎬 MovieHub</a>
+            <nav>
+                <button id="nav-home" class="active" onclick="showHome()">Главная</button>
+                <button id="nav-scrape" onclick="showScrape()">Добавить фильм</button>
+                <button id="nav-admin" onclick="showAdmin()">Админ</button>
+            </nav>
+        </div>
+    </header>
+
+
+    <main>
+        <!-- Home Page -->
+        <div id="home-page" class="page active">
+            <div class="search-section">
+                <h2 style="margin-bottom: var(--spacing-md);">Поиск фильмов</h2>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        id="search-input" 
+                        placeholder="Введите название фильма..."
+                        onkeyup="debounceSearch()"
+                    >
+                    <button class="btn btn-primary" onclick="searchMovies()">Поиск</button>
+                </div>
+            </div>
+
+
+            <div id="search-message"></div>
+            <div id="movies-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Загрузка фильмов...
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Movie Detail Page -->
+        <div id="detail-page" class="page">
+            <button class="back-btn" onclick="showHome()">← Назад</button>
+            <div id="detail-content"></div>
+        </div>
+
+
+        <!-- Scrape Page -->
+        <div id="scrape-page" class="page">
+            <h2 style="margin-bottom: var(--spacing-lg);">Добавить новый фильм</h2>
+            <div id="scrape-message"></div>
+            <form class="scrape-form" onsubmit="submitScrape(event)">
+                <div class="form-group">
+                    <label for="movie-title">Название фильма *</label>
+                    <input 
+                        type="text" 
+                        id="movie-title" 
+                        required
+                        placeholder="Например: Пчеловод"
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    🔄 Запросить фильм
+                </button>
+            </form>
+        </div>
+
+
+        <!-- Admin Login Page -->
+        <div id="admin-login-page" class="page">
+            <div style="max-width: 400px; margin: 100px auto;">
+                <h2 style="text-align: center; margin-bottom: var(--spacing-lg);">Вход в админ панель</h2>
+                <form class="scrape-form" onsubmit="submitAdminLogin(event)">
+                    <div class="form-group">
+                        <label for="admin-password">Пароль</label>
+                        <input 
+                            type="password" 
+                            id="admin-password" 
+                            required
+                            placeholder="Введите пароль"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Войти
+                    </button>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- Admin Page -->
+        <div id="admin-page" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+                <h2>Админ панель</h2>
+                <button class="btn btn-secondary" onclick="logoutAdmin()">Выход</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div style="background-color: var(--color-surface); padding: var(--spacing-lg); border-radius: var(--radius);">
+                    <div style="font-size: 24px; font-weight: 600; color: var(--color-accent);" id="stat-movies">0</div>
+                    <div style="color: var(--color-text-secondary);">Фильмов</div>
+                </div>
+                <div style="background-color: var(--color-surface); padding: var(--spacing-lg); border-radius: var(--radius);">
+                    <div style="font-size: 24px; font-weight: 600; color: var(--color-accent);" id="stat-comments">0</div>
+                    <div style="color: var(--color-text-secondary);">Комментариев</div>
+                </div>
+            </div>
+            
+            <div style="background-color: var(--color-surface); padding: var(--spacing-lg); border-radius: var(--radius);">
+                <h3 style="margin-bottom: var(--spacing-lg);">Все фильмы</h3>
+                <div id="admin-movies-list"></div>
+            </div>
+        </div>
+    </main>
+
+
+    <script src="app.js"></script>
+</body>
+</html>

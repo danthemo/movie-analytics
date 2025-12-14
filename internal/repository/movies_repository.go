@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/danthemo/movie-analytics/internal/models"
 	"gorm.io/gorm"
 )
@@ -22,8 +25,16 @@ func (r *MovieRepository) CreateMovie(movie *models.Movie) error {
 // Получить фильм по ID
 func (r *MovieRepository) GetMovieByID(id uint) (*models.Movie, error) {
 	var movie models.Movie
-	err := r.DB.Preload("Comments").First(&movie, id).Error
-	return &movie, err
+	result := r.DB.Preload("Comments").First(&movie, id)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("movie not found")
+		}
+		return nil, result.Error
+	}
+
+	return &movie, nil
 }
 
 // Обновить фильм

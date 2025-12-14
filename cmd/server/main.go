@@ -10,6 +10,7 @@ import (
 	"github.com/danthemo/movie-analytics/pkg/config"
 	"github.com/danthemo/movie-analytics/pkg/logger"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -26,10 +27,12 @@ func main() {
 	// Репозитории
 	movieRepo := repository.NewMovieRepository(database)
 	commentRepo := repository.NewRawCommentsRepository(database)
+	insightRepo := repository.NewMovieInsightRepository(database)
 
 	// Сервис
-	scrapeService := service.NewMovieScrapeService(movieRepo, commentRepo)
-	movieService := service.NewMovieService(movieRepo, commentRepo)
+	insightService := service.NewInsightService(commentRepo, insightRepo)
+	scrapeService := service.NewMovieScrapeService(movieRepo, commentRepo, insightService)
+	movieService := service.NewMovieService(movieRepo, commentRepo, insightRepo)
 
 	// Handler
 	scrapeHandler := handlers.NewScrapeHandler(scrapeService)
@@ -38,16 +41,39 @@ func main() {
 	// Mux и маршруты
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/scrape", scrapeHandler.ScrapeMovie)
-	mux.HandleFunc("/movies", moviesHandler.ListMovies)
-	mux.HandleFunc("/movies/get", moviesHandler.GetMovie)
-	mux.HandleFunc("/movies/search", moviesHandler.SearchMovies)
-	mux.HandleFunc("/movies/delete", moviesHandler.DeleteMovie)
+	mux.HandleFunc("/api/scrape", scrapeHandler.ScrapeMovie)
+	// mux.HandleFunc("/api/movies", moviesHandler.ListMovies)
+	// mux.HandleFunc("/api/movies/get", moviesHandler.GetMovie)
+	// Или переименуй маршрут на правильный:
+	mux.HandleFunc("/api/movies", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			// ✅ Удаление
+			moviesHandler.DeleteMovie(w, r)
+		} else if r.URL.Query().Get("id") != "" {
+			// ✅ Получение одного фильма по ID
+			moviesHandler.GetMovie(w, r)
+		} else {
+			// ✅ Список всех фильмов
+			moviesHandler.ListMovies(w, r)
+		}
+	})
 
-	http.Handle("/", mux)
+	mux.HandleFunc("/api/search", moviesHandler.SearchMovies)
+	// mux.HandleFunc("/api/movies/delete", moviesHandler.DeleteMovie)
+	mux.HandleFunc("/api/movies/insights", moviesHandler.GetMovieInsights)
+
+	// ===== CORS Middleware =====
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:3000", "*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(mux)
 
 	// Запуск
 	addr := ":" + cfg.ServerPort
-	logger.Info("Сервер запущен на http://localhost" + addr)
-	http.ListenAndServe(addr, nil)
+	logger.Info("🚀 Сервер запущен на http://localhost" + addr)
+	http.ListenAndServe(addr, handler)
 }

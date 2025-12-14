@@ -78,3 +78,22 @@ func (h *MoviesHandler) DeleteMovie(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "movie deleted")
 }
+
+// GET /movies/insights?id=... - insights с AI summarize
+func (h *MoviesHandler) GetMovieInsights(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	insight, err := h.Service.GetInsightByMovieID(uint(id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(insight)
+}

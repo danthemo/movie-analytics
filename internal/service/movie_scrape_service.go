@@ -7,17 +7,20 @@ import (
 	"github.com/danthemo/movie-analytics/internal/models"
 	"github.com/danthemo/movie-analytics/internal/pythonclient"
 	"github.com/danthemo/movie-analytics/internal/repository"
+	"github.com/danthemo/movie-analytics/pkg/logger"
 )
 
 type MovieScrapeService struct {
 	MoviesRepo   *repository.MovieRepository
 	CommentsRepo *repository.RawCommentsRepository
+	InsightSvc   *InsightService
 }
 
-func NewMovieScrapeService(m *repository.MovieRepository, c *repository.RawCommentsRepository) *MovieScrapeService {
+func NewMovieScrapeService(m *repository.MovieRepository, c *repository.RawCommentsRepository, i *InsightService) *MovieScrapeService {
 	return &MovieScrapeService{
 		MoviesRepo:   m,
 		CommentsRepo: c,
+		InsightSvc:   i,
 	}
 }
 
@@ -53,6 +56,7 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 		movie.Title = info.Title
 		movie.Description = info.Description
 		movie.Year = year
+		movie.PosterUrl = info.PosterUrl
 		if err := s.MoviesRepo.UpdateMovie(movie); err != nil {
 			return nil, err
 		}
@@ -62,6 +66,7 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 			Title:       info.Title,
 			Description: info.Description,
 			Year:        year,
+			PosterUrl:   info.PosterUrl,
 		}
 		if err := s.MoviesRepo.CreateMovie(movie); err != nil {
 			return nil, err
@@ -82,6 +87,11 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 			Text:    text,
 		}
 		s.CommentsRepo.CreateComment(&comment)
+	}
+
+	_, err = s.InsightSvc.GenerateSummary(movie.ID)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	return movie, nil

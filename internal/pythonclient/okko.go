@@ -12,6 +12,7 @@ type FilmInfo struct {
 	Year        string   `json:"year"`
 	Directors   []string `json:"directors"`
 	Actors      []string `json:"actors"`
+	PosterUrl   string   `json:"poster_url"`
 }
 
 func GetInfo(query string) (*FilmInfo, error) {
