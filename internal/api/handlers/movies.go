@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -94,6 +95,51 @@ func (h *MoviesHandler) DeleteMovie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "movie deleted"})
+}
+
+type updateMoviePayload struct {
+	Title       string `json:"title"`
+	Year        uint   `json:"year"`
+	Description string `json:"description"`
+	Directors   string `json:"directors"`
+	Actors      string `json:"actors"`
+	PosterURL   string `json:"poster_url"`
+}
+
+func (h *MoviesHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	var payload updateMoviePayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	movie, err := h.Service.UpdateMovieContent(
+		uint(id),
+		payload.Title,
+		payload.Year,
+		payload.Description,
+		payload.Directors,
+		payload.Actors,
+		payload.PosterURL,
+	)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, movie)
 }
 
 // GET /movies/insights?id=... - insights с AI summarize

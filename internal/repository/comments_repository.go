@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/danthemo/movie-analytics/internal/models"
@@ -65,10 +67,18 @@ func (r *RawCommentsRepository) GetCommentsByMovieID(movieId uint) ([]models.Raw
 func (r *RawCommentsRepository) GetCommentByID(commentId uint) (*models.RawComment, error) {
 	var comment models.RawComment
 	err := r.DB.Where("id = ?", commentId).First(&comment).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("comment not found")
+		}
+		return nil, err
+	}
 	return &comment, err
 }
 
-// Обновление комментария не знаю надо ли??
+func (r *RawCommentsRepository) UpdateComment(comment *models.RawComment) error {
+	return r.DB.Save(comment).Error
+}
 
 // Удаление комментария по ID
 func (r *RawCommentsRepository) DeleteComment(commentId uint) error {

@@ -7,6 +7,7 @@ import (
 	"github.com/danthemo/movie-analytics/internal/ai"
 	"github.com/danthemo/movie-analytics/internal/models"
 	"github.com/danthemo/movie-analytics/internal/repository"
+	"github.com/danthemo/movie-analytics/pkg/logger"
 )
 
 type InsightService struct {
@@ -37,6 +38,7 @@ func (s *InsightService) GenerateSummary(ctx context.Context, movieID uint) (*mo
 	if err != nil {
 		return nil, fmt.Errorf("generate ai summary: %w", err)
 	}
+	logger.Info(fmt.Sprintf("AI result ready for movie %d with rating %.1f", movieID, result.Rating))
 
 	insight := &models.MovieInsight{
 		MovieID: movieID,
@@ -47,6 +49,7 @@ func (s *InsightService) GenerateSummary(ctx context.Context, movieID uint) (*mo
 	if err := s.InsightRepo.UpdateInsight(insight); err != nil {
 		return nil, fmt.Errorf("save insight: %w", err)
 	}
+	logger.Info(fmt.Sprintf("Insight saved for movie %d", movieID))
 
 	return insight, nil
 }

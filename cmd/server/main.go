@@ -48,6 +48,7 @@ func main() {
 	// Handler
 	scrapeHandler := handlers.NewScrapeHandler(scrapeService)
 	moviesHandler := handlers.NewMoviesHandler(movieService)
+	commentsHandler := handlers.NewCommentsHandler(movieService)
 
 	// Mux и маршруты
 	mux := http.NewServeMux()
@@ -57,6 +58,8 @@ func main() {
 		if r.Method == http.MethodDelete {
 			// Удаление
 			moviesHandler.DeleteMovie(w, r)
+		} else if r.Method == http.MethodPut {
+			moviesHandler.UpdateMovie(w, r)
 		} else if r.URL.Query().Get("id") != "" {
 			// Получение одного фильма по ID
 			moviesHandler.GetMovie(w, r)
@@ -68,6 +71,18 @@ func main() {
 
 	mux.HandleFunc("/api/search", moviesHandler.SearchMovies)
 	mux.HandleFunc("/api/movies/insights", moviesHandler.GetMovieInsights)
+	mux.HandleFunc("/api/comments", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			commentsHandler.CreateComment(w, r)
+		case http.MethodPut:
+			commentsHandler.UpdateComment(w, r)
+		case http.MethodDelete:
+			commentsHandler.DeleteComment(w, r)
+		default:
+			writeMethodNotAllowed(w)
+		}
+	})
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -100,6 +115,12 @@ func main() {
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		logger.Fatalln("Ошибка HTTP сервера: " + err.Error())
 	}
+}
+
+func writeMethodNotAllowed(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	fmt.Fprintln(w, `{"error":"method not allowed"}`)
 }
 
 func recoveryMiddleware(next http.Handler) http.Handler {

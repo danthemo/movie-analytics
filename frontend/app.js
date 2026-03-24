@@ -3,6 +3,7 @@ let allMovies = [];
 let searchTimeout;
 let isAdminLoggedIn = false;
 let currentMovie = null;
+let adminSelectedMovieId = null;
 
 
 // Навигация
@@ -15,7 +16,7 @@ function showPage(pageId) {
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     if (pageId === 'home-page') document.getElementById('nav-home').classList.add('active');
     if (pageId === 'scrape-page') document.getElementById('nav-scrape').classList.add('active');
-    if (pageId === 'admin-page') document.getElementById('nav-admin').classList.add('active');
+    if (pageId === 'admin-page' || pageId === 'admin-editor-page') document.getElementById('nav-admin').classList.add('active');
 }
 
 
@@ -238,16 +239,20 @@ async function loadAdminMovies() {
         if (!response.ok) throw new Error('Failed to load movies');
         
         const movies = await response.json();
+        allMovies = movies;
         
         const html = movies.map(movie => `
-            <div style="background-color: var(--color-bg); padding: var(--spacing-md); border-radius: var(--radius); margin-bottom: var(--spacing-md); display: flex; justify-content: space-between; align-items: center;">
+            <div style="background-color: var(--color-bg); padding: var(--spacing-md); border-radius: var(--radius); margin-bottom: var(--spacing-md); display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md);">
                 <div>
                     <div style="font-weight: 600;">${movie.title}</div>
                     <div style="color: var(--color-text-secondary); font-size: 12px;">
                         ${movie.comments?.length || 0} комментариев
                     </div>
                 </div>
-                <button class="btn btn-secondary" onclick="deleteMovieAdmin(${movie.id})">🗑️ Удалить</button>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <button class="btn btn-secondary" onclick="openAdminEditor(${movie.id})">Редактировать</button>
+                    <button class="btn btn-secondary" onclick="deleteMovieAdmin(${movie.id})">🗑️ Удалить</button>
+                </div>
             </div>
         `).join('');
         
@@ -273,6 +278,11 @@ async function deleteMovieAdmin(movieId) {
         
         if (response.ok) {
             showToast('✓ Фильм удален', 'success');
+            if (adminSelectedMovieId === movieId) {
+                adminSelectedMovieId = null;
+                document.getElementById('admin-editor').innerHTML = '';
+                showAdmin();
+            }
             loadAdminMovies();
             loadAdminStats();
             loadMovies();
@@ -282,6 +292,276 @@ async function deleteMovieAdmin(movieId) {
     } catch (error) {
         showToast('Ошибка удаления', 'error');
         console.error(error);
+    }
+}
+
+
+async function openAdminEditor(movieId, options = {}) {
+    adminSelectedMovieId = movieId;
+
+    try {
+        const response = await fetch(`${API_URL}/api/movies?id=${movieId}`);
+        if (!response.ok) throw new Error('Не удалось загрузить фильм');
+
+        const movie = await response.json();
+        renderAdminEditor(movie);
+        showPage('admin-editor-page');
+
+        if (!options.silent) {
+            showMessage('admin-message', `Редактирование: ${movie.title}`, 'info');
+        }
+    } catch (error) {
+        showMessage('admin-message', `Ошибка загрузки фильма: ${error.message}`, 'error');
+    }
+}
+
+
+function renderAdminEditor(movie) {
+    const editor = document.getElementById('admin-editor');
+    const comments = Array.isArray(movie.comments) ? movie.comments : [];
+
+    editor.innerHTML = `
+        <div style="background-color: var(--color-surface); padding: var(--spacing-lg); border-radius: var(--radius);">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                <div>
+                    <h3 style="margin-bottom: 4px;">Редактирование фильма</h3>
+                    <div style="color: var(--color-text-secondary); font-size: 14px;">ID: ${movie.id}</div>
+                </div>
+                <button class="btn btn-secondary" onclick="closeAdminEditor()">Закрыть</button>
+            </div>
+
+            <form onsubmit="saveMovieAdmin(event, ${movie.id})" style="display: grid; gap: var(--spacing-md);">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-title">Название</label>
+                    <input id="admin-movie-title" type="text" value="${escapeAttribute(movie.title || '')}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-year">Год</label>
+                    <input id="admin-movie-year" type="number" min="0" value="${movie.year || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-poster">Обложка (URL)</label>
+                    <input id="admin-movie-poster" type="text" value="${escapeAttribute(movie.poster_url || '')}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-directors">Режиссёр(ы)</label>
+                    <input id="admin-movie-directors" type="text" value="${escapeAttribute(movie.directors || '')}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-actors">Актёры</label>
+                    <input id="admin-movie-actors" type="text" value="${escapeAttribute(movie.actors || '')}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-movie-description">Описание</label>
+                    <textarea id="admin-movie-description">${escapeTextarea(movie.description || '')}</textarea>
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <button type="submit" class="btn btn-primary">Сохранить фильм</button>
+                </div>
+            </form>
+
+            <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);">
+                <h3 style="margin-bottom: var(--spacing-md);">Комментарии</h3>
+                <form onsubmit="addCommentAdmin(event, ${movie.id})" style="display: grid; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="admin-new-comment-author">Автор</label>
+                        <input id="admin-new-comment-author" type="text" placeholder="Например: Редактор">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="admin-new-comment-source">Источник</label>
+                        <input id="admin-new-comment-source" type="text" value="admin">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="admin-new-comment-text">Текст комментария</label>
+                        <textarea id="admin-new-comment-text" required></textarea>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">Добавить комментарий</button>
+                    </div>
+                </form>
+
+                <div style="display: grid; gap: var(--spacing-md);">
+                    ${comments.length > 0 ? comments.map(comment => renderAdminCommentItem(comment)).join('') : `
+                        <div class="empty-state">
+                            <h2>Комментариев пока нет</h2>
+                            <p>Можно добавить комментарий вручную прямо из админки.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+function renderAdminCommentItem(comment) {
+    return `
+        <div style="background-color: var(--color-bg); padding: var(--spacing-md); border-radius: var(--radius); border: 1px solid var(--color-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); gap: var(--spacing-md);">
+                <strong>Комментарий #${comment.id}</strong>
+                <div style="color: var(--color-text-secondary); font-size: 12px;">${comment.scraped_at ? new Date(comment.scraped_at).toLocaleString('ru-RU') : ''}</div>
+            </div>
+            <div style="display: grid; gap: var(--spacing-md);">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-comment-author-${comment.id}">Автор</label>
+                    <input id="admin-comment-author-${comment.id}" type="text" value="${escapeAttribute(comment.author || '')}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-comment-source-${comment.id}">Источник</label>
+                    <input id="admin-comment-source-${comment.id}" type="text" value="${escapeAttribute(comment.source || '')}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="admin-comment-text-${comment.id}">Текст</label>
+                    <textarea id="admin-comment-text-${comment.id}" required>${escapeTextarea(comment.text || '')}</textarea>
+                </div>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <button class="btn btn-primary" type="button" onclick="saveCommentAdmin(${comment.id})">Сохранить</button>
+                    <button class="btn btn-secondary" type="button" onclick="deleteCommentAdmin(${comment.id})">Удалить</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+function closeAdminEditor() {
+    adminSelectedMovieId = null;
+    document.getElementById('admin-editor').innerHTML = '';
+    clearMessages('admin-message');
+    showAdmin();
+}
+
+
+async function saveMovieAdmin(event, movieId) {
+    event.preventDefault();
+
+    const payload = {
+        title: document.getElementById('admin-movie-title').value.trim(),
+        year: Number(document.getElementById('admin-movie-year').value) || 0,
+        poster_url: document.getElementById('admin-movie-poster').value.trim(),
+        directors: document.getElementById('admin-movie-directors').value.trim(),
+        actors: document.getElementById('admin-movie-actors').value.trim(),
+        description: document.getElementById('admin-movie-description').value.trim(),
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/movies?id=${movieId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await extractErrorMessage(response, 'Не удалось сохранить фильм');
+            throw new Error(error);
+        }
+
+        showToast('✓ Изменения фильма сохранены', 'success');
+        loadMovies();
+        loadAdminMovies();
+        loadAdminStats();
+    } catch (error) {
+        showMessage('admin-message', error.message, 'error');
+    }
+}
+
+
+async function addCommentAdmin(event, movieId) {
+    event.preventDefault();
+
+    const payload = {
+        movie_id: movieId,
+        author: document.getElementById('admin-new-comment-author').value.trim(),
+        source: document.getElementById('admin-new-comment-source').value.trim(),
+        text: document.getElementById('admin-new-comment-text').value.trim(),
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await extractErrorMessage(response, 'Не удалось добавить комментарий');
+            throw new Error(error);
+        }
+
+        showToast('✓ Комментарий добавлен', 'success');
+        openAdminEditor(movieId, { silent: true });
+        loadMovies();
+        loadAdminMovies();
+        loadAdminStats();
+    } catch (error) {
+        showMessage('admin-message', error.message, 'error');
+    }
+}
+
+
+async function saveCommentAdmin(commentId) {
+    if (!adminSelectedMovieId) return;
+
+    const payload = {
+        author: document.getElementById(`admin-comment-author-${commentId}`).value.trim(),
+        source: document.getElementById(`admin-comment-source-${commentId}`).value.trim(),
+        text: document.getElementById(`admin-comment-text-${commentId}`).value.trim(),
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/comments?id=${commentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await extractErrorMessage(response, 'Не удалось сохранить комментарий');
+            throw new Error(error);
+        }
+
+        showToast('✓ Комментарий сохранен', 'success');
+        openAdminEditor(adminSelectedMovieId, { silent: true });
+        loadMovies();
+        loadAdminMovies();
+        loadAdminStats();
+    } catch (error) {
+        showMessage('admin-message', error.message, 'error');
+    }
+}
+
+
+async function deleteCommentAdmin(commentId) {
+    if (!adminSelectedMovieId) return;
+    if (!confirm('Удалить этот комментарий?')) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/comments?id=${commentId}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const error = await extractErrorMessage(response, 'Не удалось удалить комментарий');
+            throw new Error(error);
+        }
+
+        showToast('✓ Комментарий удален', 'success');
+        openAdminEditor(adminSelectedMovieId, { silent: true });
+        loadMovies();
+        loadAdminMovies();
+        loadAdminStats();
+    } catch (error) {
+        showMessage('admin-message', error.message, 'error');
+    }
+}
+
+
+async function extractErrorMessage(response, fallbackMessage) {
+    try {
+        const data = await response.json();
+        return data.error || fallbackMessage;
+    } catch (error) {
+        return fallbackMessage;
     }
 }
 
@@ -598,6 +878,19 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+
+function escapeAttribute(value) {
+    return escapeHtml(value);
+}
+
+
+function escapeTextarea(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 

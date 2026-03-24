@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movie Analytics - Поиск и анализ фильмов</title>
-    <link rel="stylesheet" href="styles.css?v=20260324-1">
+    <link rel="stylesheet" href="styles.css?v=20260324-3">
 </head>
 <body>
     <header>
@@ -103,6 +103,7 @@
                 <h2>Админ панель</h2>
                 <button class="btn btn-secondary" onclick="logoutAdmin()">Выход</button>
             </div>
+            <div id="admin-message"></div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
                 <div style="background-color: var(--color-surface); padding: var(--spacing-lg); border-radius: var(--radius);">
@@ -120,9 +121,15 @@
                 <div id="admin-movies-list"></div>
             </div>
         </div>
+
+        <div id="admin-editor-page" class="page">
+            <button class="back-btn" onclick="showAdmin()">← Назад к списку</button>
+            <div id="admin-message"></div>
+            <div id="admin-editor"></div>
+        </div>
     </main>
 
 
-    <script src="app.js?v=20260324-1"></script>
+    <script src="app.js?v=20260324-3"></script>
 </body>
 </html>
