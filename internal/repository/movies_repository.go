@@ -57,7 +57,7 @@ func (r *MovieRepository) GetAllMovies() ([]models.Movie, error) {
 // Поиск по названию для парсера
 func (r *MovieRepository) FindByTitle(title string) ([]models.Movie, error) {
 	var movies []models.Movie
-	err := r.DB.Where("title = ?", title).Find(&movies).Error
+	err := r.DB.Where("LOWER(title) = LOWER(?)", title).Find(&movies).Error
 	return movies, err
 }
 

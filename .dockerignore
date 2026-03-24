@@ -1,0 +1,6 @@
+.git
+.gitignore
+.gocache
+internal/pythonclient/pythonParser/venv
+internal/pythonclient/pythonParser/__pycache__
+internal/pythonclient/pythonParser/.pytest_cache

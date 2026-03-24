@@ -73,10 +73,19 @@ func (s *MovieService) SearchMovies(query string) ([]MovieSummary, error) {
 
 	summaries := make([]MovieSummary, 0, len(movies))
 	for _, m := range movies {
+		insight, _ := s.InsightRepo.GetInsightByMovieID(m.ID)
+
+		rating := 0.0
+		if insight != nil {
+			rating = insight.Rating
+		}
+
 		summaries = append(summaries, MovieSummary{
 			ID:        m.ID,
 			Title:     m.Title,
 			PosterUrl: m.PosterUrl,
+			Rating:    rating,
+			Comments:  m.Comments,
 		})
 	}
 	return summaries, nil
@@ -85,4 +94,8 @@ func (s *MovieService) SearchMovies(query string) ([]MovieSummary, error) {
 // Получение insights по ID фильма
 func (s *MovieService) GetInsightByMovieID(id uint) (*models.MovieInsight, error) {
 	return s.InsightRepo.GetInsightByMovieID(id)
+}
+
+func (s *MovieService) DeleteMovie(id uint) error {
+	return s.MoviesRepo.DeleteMovie(id)
 }

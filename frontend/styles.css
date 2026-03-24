@@ -277,13 +277,14 @@ main {
 
 .detail-info h1 {
     font-size: 32px;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 14px;
 }
 
 .detail-meta {
     color: var(--color-text-secondary);
     margin-bottom: var(--spacing-lg);
-    font-size: 14px;
+    font-size: 15px;
+    line-height: 1.6;
 }
 
 .detail-description {
@@ -292,6 +293,94 @@ main {
     border-radius: var(--radius);
     margin-bottom: var(--spacing-lg);
     line-height: 1.6;
+}
+
+.detail-description-section {
+    background-color: var(--color-surface);
+    border-radius: var(--radius);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--color-border);
+}
+
+.detail-description-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+}
+
+.detail-description-header h3 {
+    font-size: 22px;
+    letter-spacing: 0.01em;
+}
+
+.detail-description-content {
+    display: block;
+    line-height: 1.75;
+    color: var(--color-text);
+    max-height: none;
+}
+
+.detail-description-content.collapsed {
+    max-height: 8.75em;
+    overflow: hidden;
+    position: relative;
+}
+
+.detail-description-content.collapsed::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    background: linear-gradient(180deg, rgba(38, 40, 40, 0) 0%, rgba(38, 40, 40, 0.95) 100%);
+}
+
+.detail-description-content p {
+    margin-bottom: var(--spacing-lg);
+}
+
+.detail-description-content p:last-child {
+    margin-bottom: 0;
+}
+
+.description-section + .description-section {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.description-section h4 {
+    margin-bottom: var(--spacing-md);
+    color: var(--color-accent);
+    font-size: 18px;
+}
+
+.description-bullets {
+    margin: var(--spacing-md) 0 0;
+    padding-left: 28px;
+}
+
+.description-bullets li + li {
+    margin-top: var(--spacing-sm);
+}
+
+.btn-expand {
+    margin-top: var(--spacing-sm);
+    padding: 4px 12px;
+    background: none;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-expand:hover {
+    background-color: rgba(50, 184, 198, 0.12);
 }
 
 .detail-actions {

@@ -124,42 +124,59 @@ C:.
 
 ### Предварительные требования
 *   Установлены Go и Python.
-*   Установлен Docker (для БД).
-*   Получен API ключ Perplexity.
+*   Установлен Docker.
+*   Получен API ключ OpenAI.
 
 ### Шаг 1: Настройка окружения
 Создайте файл `.env` в корне проекта:
 
-```
-DATABASE_URL=postgres://postgres:password@localhost:5432/moviedb?sslmode=disable
+```env
 PORT=8080
-PERPLEXITY_API_KEY=api_key
+DATABASE_URL=postgres://postgres:test_password@127.0.0.1:5432/moviedb?sslmode=disable
+PYTHON_SERVICE_URL=http://127.0.0.1:8000
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1/responses
+PYTHON_REQUEST_TIMEOUT_SECONDS=30
+AI_REQUEST_TIMEOUT_SECONDS=60
 ```
 
 ### Шаг 2: Запуск Базы Данных
 
-```
-docker run --name movie-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=moviedb -p 5432:5432 -d postgres
+```bash
+docker compose up postgres -d
 ```
 
 ### Шаг 3: Запуск Python Microservice
 
-```
+```bash
 cd internal/pythonclient/pythonParser
 python3 -m venv venv
-/venv/Scripts/activate
+. venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
-uvicorn service:app --host 0.0.0.0 --port 8000
+OKKO_HEADLESS=false uvicorn service:app --host 0.0.0.0 --port 8000
 ```
 
 ### Шаг 4: Запуск Go Backend
 Откройте новый терминал в корне проекта:
 
-```
+```bash
 go mod tidy
 go run cmd/server/main.go
 ```
 
 ### Шаг 5: Использование
-Откройте браузер и перейдите по адресу: `http://localhost:5500` (или путь к вашему index.html, если он раздается отдельно).
+Откройте браузер и перейдите по адресу: `http://localhost:8080`.
+
+### Альтернативный запуск через Docker
+
+```bash
+docker compose up --build
+```
+
+После запуска будут доступны:
+*   Backend и фронтенд: `http://localhost:8080`
+*   Python parser: `http://localhost:8000`
+*   Health endpoint: `http://localhost:8080/health`

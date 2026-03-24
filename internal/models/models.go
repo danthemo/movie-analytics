@@ -50,6 +50,8 @@ type Movie struct {
 	Title       string       `json:"title"`
 	Year        uint         `json:"year"`
 	Description string       `gorm:"type:text" json:"description"`
+	Directors   string       `gorm:"type:text" json:"directors"`
+	Actors      string       `gorm:"type:text" json:"actors"`
 	PosterUrl   string       `gorm:"type:text" json:"poster_url"`
 	TrailerUrl  string       `gorm:"type:text" json:"trailer_url"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"created_at"`

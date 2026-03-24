@@ -3,3 +3,7 @@ venv/
 __pycache__/
 *.pyc
 .env
+.gocache/
+.gomodcache/
+internal/pythonclient/pythonParser/venv/
+internal/pythonclient/pythonParser/__pycache__/

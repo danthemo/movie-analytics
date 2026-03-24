@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/danthemo/movie-analytics/internal/models"
 	"gorm.io/gorm"
 )
@@ -17,6 +19,39 @@ func NewRawCommentsRepository(db *gorm.DB) *RawCommentsRepository {
 // Создание нового комментария
 func (r *RawCommentsRepository) CreateComment(comment *models.RawComment) error {
 	return r.DB.Create(comment).Error
+}
+
+func (r *RawCommentsRepository) ReplaceMovieComments(movieID uint, source string, reviews []string) error {
+	return r.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("movie_id = ? AND source = ?", movieID, source).Delete(&models.RawComment{}).Error; err != nil {
+			return err
+		}
+
+		seen := make(map[string]struct{}, len(reviews))
+		comments := make([]models.RawComment, 0, len(reviews))
+		for _, review := range reviews {
+			cleaned := strings.TrimSpace(review)
+			if cleaned == "" {
+				continue
+			}
+			if _, exists := seen[cleaned]; exists {
+				continue
+			}
+			seen[cleaned] = struct{}{}
+			comments = append(comments, models.RawComment{
+				MovieID: movieID,
+				Source:  source,
+				Author:  "",
+				Text:    cleaned,
+			})
+		}
+
+		if len(comments) == 0 {
+			return nil
+		}
+
+		return tx.Create(&comments).Error
+	})
 }
 
 // Получить комментарии по ID фильма

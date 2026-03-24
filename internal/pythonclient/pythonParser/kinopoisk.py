@@ -140,4 +140,4 @@ def parse_kp_info(raw_query):
 
 # ТЕСТ
 # parse_kp_info("побег из шоушенка")
-parse_kp_reviews("побег из шоушенка")
+# parse_kp_reviews("побег из шоушенка")

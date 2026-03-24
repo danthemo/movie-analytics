@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   postgres:
     image: postgres:16.10
@@ -11,5 +10,39 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d moviedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  python-parser:
+    build:
+      context: ./internal/pythonclient/pythonParser
+    container_name: movie_python_parser
+    ports:
+      - "8000:8000"
+
+  app:
+    build:
+      context: .
+    container_name: movie_analytics_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      python-parser:
+        condition: service_started
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://postgres:test_password@postgres:5432/moviedb?sslmode=disable
+      PYTHON_SERVICE_URL: http://python-parser:8000
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1/responses}
+      PYTHON_REQUEST_TIMEOUT_SECONDS: ${PYTHON_REQUEST_TIMEOUT_SECONDS:-30}
+      AI_REQUEST_TIMEOUT_SECONDS: ${AI_REQUEST_TIMEOUT_SECONDS:-60}
+    ports:
+      - "8080:8080"
 volumes:
   postgres_data:

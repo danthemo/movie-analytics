@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/danthemo/movie-analytics/internal/models"
 	"github.com/danthemo/movie-analytics/internal/pythonclient"
@@ -14,19 +16,26 @@ type MovieScrapeService struct {
 	MoviesRepo   *repository.MovieRepository
 	CommentsRepo *repository.RawCommentsRepository
 	InsightSvc   *InsightService
+	PythonClient *pythonclient.Client
 }
 
-func NewMovieScrapeService(m *repository.MovieRepository, c *repository.RawCommentsRepository, i *InsightService) *MovieScrapeService {
+func NewMovieScrapeService(
+	m *repository.MovieRepository,
+	c *repository.RawCommentsRepository,
+	i *InsightService,
+	pythonClient *pythonclient.Client,
+) *MovieScrapeService {
 	return &MovieScrapeService{
 		MoviesRepo:   m,
 		CommentsRepo: c,
 		InsightSvc:   i,
+		PythonClient: pythonClient,
 	}
 }
 
-func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
+func (s *MovieScrapeService) ScrapeMovie(ctx context.Context, query string) (*models.Movie, error) {
 	// Парсим информацию о фильм
-	info, err := pythonclient.GetInfo(query)
+	info, err := s.PythonClient.GetInfo(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +51,7 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 		year = uint(y)
 	}
 
-	// Ищем фильм в базе по title (частичное совпадение, нечувствительно к регистру)
+	// Ищем фильм в базе по title без учета регистра
 	existingMovies, err := s.MoviesRepo.FindByTitle(info.Title)
 	if err != nil {
 		return nil, err
@@ -56,6 +65,8 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 		movie.Title = info.Title
 		movie.Description = info.Description
 		movie.Year = year
+		movie.Directors = strings.Join(info.Directors, ", ")
+		movie.Actors = strings.Join(info.Actors, ", ")
 		movie.PosterUrl = info.PosterUrl
 		if err := s.MoviesRepo.UpdateMovie(movie); err != nil {
 			return nil, err
@@ -66,6 +77,8 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 			Title:       info.Title,
 			Description: info.Description,
 			Year:        year,
+			Directors:   strings.Join(info.Directors, ", "),
+			Actors:      strings.Join(info.Actors, ", "),
 			PosterUrl:   info.PosterUrl,
 		}
 		if err := s.MoviesRepo.CreateMovie(movie); err != nil {
@@ -74,24 +87,17 @@ func (s *MovieScrapeService) ScrapeMovie(query string) (*models.Movie, error) {
 	}
 
 	// Сохраняем отзывы
-	reviews, err := pythonclient.GetReviews(query)
+	reviews, err := s.PythonClient.GetReviews(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, text := range reviews {
-		comment := models.RawComment{
-			MovieID: movie.ID,
-			Source:  "okko",
-			Author:  "",
-			Text:    text,
-		}
-		s.CommentsRepo.CreateComment(&comment)
+	if err := s.CommentsRepo.ReplaceMovieComments(movie.ID, "okko", reviews); err != nil {
+		return nil, err
 	}
 
-	_, err = s.InsightSvc.GenerateSummary(movie.ID)
-	if err != nil {
-		logger.Error(err)
+	if _, err := s.InsightSvc.GenerateSummary(ctx, movie.ID); err != nil {
+		logger.Error(fmt.Errorf("insight generation skipped for movie %d: %w", movie.ID, err))
 	}
 
 	return movie, nil

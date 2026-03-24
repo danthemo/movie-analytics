@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/danthemo/movie-analytics/internal/service"
@@ -16,18 +15,22 @@ func NewScrapeHandler(s *service.MovieScrapeService) *ScrapeHandler {
 }
 
 func (h *ScrapeHandler) ScrapeMovie(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
 	query := r.URL.Query().Get("query")
 	if query == "" {
-		http.Error(w, "query is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "query is required")
 		return
 	}
 
-	movie, err := h.ScrapeService.ScrapeMovie(query)
+	movie, err := h.ScrapeService.ScrapeMovie(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(movie)
+	writeJSON(w, http.StatusOK, movie)
 }

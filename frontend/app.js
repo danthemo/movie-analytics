@@ -1,7 +1,8 @@
-const API_URL = 'http://localhost:8080';
+const API_URL = window.location.origin;
 let allMovies = [];
 let searchTimeout;
 let isAdminLoggedIn = false;
+let currentMovie = null;
 
 
 // Навигация
@@ -56,7 +57,7 @@ async function loadMovies() {
         allMovies = await response.json();
         renderMovies(allMovies);
     } catch (error) {
-        showMessage('home-page', `Ошибка загрузки: ${error.message}`, 'error');
+        showMessage('search-message', `Ошибка загрузки: ${error.message}`, 'error');
         console.error(error);
     }
 }
@@ -69,6 +70,7 @@ async function loadMovieDetail(movieId) {
         if (!response.ok) throw new Error('Movie not found');
         
         const movie = await response.json();
+        currentMovie = movie;
         
         // Загружаем insights отдельно
         try {
@@ -106,7 +108,7 @@ async function searchMovies() {
         const results = await response.json();
         
         if (results.length === 0) {
-            showMessage('home-page', 
+            showMessage('search-message', 
                 `Фильм "${query}" не найден. Хотите парсить его?`, 
                 'info'
             );
@@ -115,7 +117,7 @@ async function searchMovies() {
             renderMovies(results);
         }
     } catch (error) {
-        showMessage('home-page', `Ошибка поиска: ${error.message}`, 'error');
+        showMessage('search-message', `Ошибка поиска: ${error.message}`, 'error');
     }
 }
 
@@ -311,7 +313,7 @@ function renderMovies(movies) {
                     </div>
                     <div class="movie-info">
                         <div class="movie-title">${movie.title}</div>
-                        <p class="rating">⭐ ${movie.rating.toFixed(1)}</p>
+                        <p class="rating">${formatMovieRating(movie)}</p>
                     </div>
                 </div>
             `).join('')}
@@ -325,43 +327,36 @@ function renderMovieDetail(movie) {
     const description = movie?.description || 'Описание отсутствует';
     const posterUrl = movie?.poster_url;
     const comments = Array.isArray(movie?.comments) ? movie.comments : [];
+    const metadata = buildMovieMetadata(movie);
     
     const descriptionId = `desc-${movie.id || 'unknown'}`;
-    const MAX_LINES = 3;
-    const isLongDescription = description.split('\n').length > MAX_LINES || description.length > 300;
+    const normalizedDescription = normalizeDescriptionText(description);
+    const formattedDescription = formatDescriptionHtml(normalizedDescription);
+    const isLongDescription = normalizedDescription.length > 700 || normalizedDescription.split('\n').length > 10;
     
     const descriptionHtml = isLongDescription 
         ? `
-            <div class="detail-description">
-                <div id="${descriptionId}" class="description-text collapsed" style="
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    transition: all 0.3s ease;
-                ">
-                    ${description}
+            <section class="detail-description-section">
+                <div class="detail-description-header">
+                    <h3>Описание</h3>
                 </div>
-                <button class="btn-expand" id="${descriptionId}-btn" onclick="toggleDescription('${descriptionId}')" style="
-                    margin-top: var(--spacing-sm);
-                    padding: 4px 12px;
-                    background: none;
-                    border: 1px solid var(--color-accent);
-                    color: var(--color-accent);
-                    cursor: pointer;
-                    border-radius: 4px;
-                    font-size: 14px;
-                    transition: all 0.2s ease;
-                ">
+                <div id="${descriptionId}" class="detail-description-content collapsed" data-collapsed="true">
+                    ${formattedDescription}
+                </div>
+                <button class="btn-expand" id="${descriptionId}-btn" onclick="toggleDescription('${descriptionId}')">
                     Показать полностью ↓
                 </button>
-            </div>
+            </section>
         `
         : `
-            <div class="detail-description">
-                ${description}
-            </div>
+            <section class="detail-description-section">
+                <div class="detail-description-header">
+                    <h3>Описание</h3>
+                </div>
+                <div class="detail-description-content">
+                    ${formattedDescription}
+                </div>
+            </section>
         `;
     
     // Комментарии
@@ -394,6 +389,16 @@ function renderMovieDetail(movie) {
                 </div>
             </div>
         `;
+    } else {
+        commentsHtml = `
+            <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);">
+                <h3 style="margin-bottom: var(--spacing-md); font-size: 20px;">💬 Комментарии</h3>
+                <div class="empty-state">
+                    <h2>Комментариев пока нет</h2>
+                    <p>Для этого фильма еще не удалось получить отзывы, поэтому AI-анализ и рейтинг могут отсутствовать.</p>
+                </div>
+            </div>
+        `;
     }
     
     // ИИ сводка
@@ -418,6 +423,16 @@ function renderMovieDetail(movie) {
                 </div>
             </div>
         `;
+    } else {
+        insightHtml = `
+            <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);">
+                <h3 style="margin-bottom: var(--spacing-md); font-size: 20px;">🤖 AI Анализ</h3>
+                <div class="empty-state">
+                    <h2>Анализ пока недоступен</h2>
+                    <p>Недостаточно данных для оценки фильма или AI-сервис временно не смог обработать отзывы.</p>
+                </div>
+            </div>
+        `;
     }
     
     // Рендерим всё вместе
@@ -432,14 +447,10 @@ function renderMovieDetail(movie) {
                 </div>
                 <div class="detail-info">
                     <h1>${title}</h1>
-                    ${descriptionHtml}
-                    <div class="detail-actions">
-                        <button class="btn btn-primary" onclick="copyMovieInfo(${movie.id})">
-                            📋 Скопировать информацию
-                        </button>
-                    </div>
+                    ${metadata ? `<div class="detail-meta">${metadata}</div>` : ''}
                 </div>
             </div>
+            ${descriptionHtml}
             ${insightHtml}
             ${commentsHtml}
         </div>
@@ -450,34 +461,19 @@ function renderMovieDetail(movie) {
 function toggleDescription(descriptionId) {
     const element = document.getElementById(descriptionId);
     const button = document.getElementById(`${descriptionId}-btn`);
+    if (!element || !button) return;
     
-    if (element.classList.contains('collapsed')) {
-        element.style.webkitLineClamp = 'unset';
-        element.style.overflow = 'visible';
+    const isCollapsed = element.dataset.collapsed !== 'false';
+
+    if (isCollapsed) {
         element.classList.remove('collapsed');
+        element.dataset.collapsed = 'false';
         button.textContent = 'Скрыть ↑';
     } else {
-        element.style.webkitLineClamp = '3';
-        element.style.overflow = 'hidden';
         element.classList.add('collapsed');
+        element.dataset.collapsed = 'true';
         button.textContent = 'Показать полностью ↓';
     }
-}
-
-
-function copyMovieInfo(movieId) {
-    const movie = allMovies.find(m => m.id === movieId);
-    if (!movie) return;
-
-    const text = `
-${movie.title}
-
-${movie.description || 'Описание отсутствует'}
-    `.trim();
-
-    navigator.clipboard.writeText(text).then(() => {
-        showMessage('detail-page', '✓ Скопировано в буфер обмена', 'success');
-    });
 }
 
 
@@ -499,14 +495,13 @@ function showToast(text, type = 'info') {
 
 
 // Сообщения на страницах
-function showMessage(pageId, text, type = 'info') {
-    const messageEl = document.getElementById(`${pageId}-message`) || 
-                     document.querySelector(`#${pageId} .message-container`);
+function showMessage(elementId, text, type = 'info') {
+    const messageEl = document.getElementById(elementId);
     
     if (!messageEl) return;
 
     messageEl.innerHTML = `<div class="message ${type}">${text}</div>`;
-    setTimeout(() => clearMessages(`${pageId}-message`), 5000);
+    setTimeout(() => clearMessages(elementId), 5000);
 }
 
 
@@ -518,3 +513,108 @@ function clearMessages(elementId) {
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', loadMovies);
+
+
+function formatMovieRating(movie) {
+    const rating = Number(movie?.rating);
+    const commentsCount = Array.isArray(movie?.comments) ? movie.comments.length : 0;
+
+    if (Number.isFinite(rating) && rating > 0) {
+        return `⭐ ${rating.toFixed(1)}`;
+    }
+
+    if (commentsCount === 0) {
+        return 'Не оценено';
+    }
+
+    return 'Оценка недоступна';
+}
+
+
+function normalizeDescriptionText(rawText) {
+    if (!rawText) return 'Описание отсутствует';
+
+    let text = rawText.replace(/\r/g, '').trim();
+    const sectionTitles = ['Сюжет', 'Причины посмотреть', 'Интересные факты', 'Осторожно, спойлеры!'];
+
+    for (const title of sectionTitles) {
+        const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        text = text.replace(new RegExp(`([^\\n])(${escapedTitle})`, 'g'), `$1\n\n$2`);
+    }
+
+    text = text.replace(/▪\s*/g, '\n▪ ');
+    text = text.replace(/\n{3,}/g, '\n\n');
+    return text.trim();
+}
+
+
+function formatDescriptionHtml(text) {
+    const safeText = escapeHtml(text);
+    const sections = safeText.split(/\n{2,}/).map(section => section.trim()).filter(Boolean);
+
+    return sections.map(section => renderDescriptionSection(section)).join('');
+}
+
+
+function renderDescriptionSection(section) {
+    const titles = ['Сюжет', 'Причины посмотреть', 'Интересные факты', 'Осторожно, спойлеры!'];
+    const matchedTitle = titles.find(title => section.startsWith(title));
+
+    if (!matchedTitle) {
+        return `<p>${section.replace(/\n/g, '<br>')}</p>`;
+    }
+
+    const body = section.slice(matchedTitle.length).trim();
+    const lines = body.split('\n').map(line => line.trim()).filter(Boolean);
+    const bulletLines = lines.filter(line => line.startsWith('▪'));
+    const textLines = lines.filter(line => !line.startsWith('▪'));
+
+    const paragraphs = textLines.length > 0
+        ? `<p>${textLines.join('<br>')}</p>`
+        : '';
+
+    const bullets = bulletLines.length > 0
+        ? `
+            <ul class="description-bullets">
+                ${bulletLines.map(line => `<li>${line.replace(/^▪\s*/, '')}</li>`).join('')}
+            </ul>
+        `
+        : '';
+
+    return `
+        <div class="description-section">
+            <h4>${matchedTitle}</h4>
+            ${paragraphs}
+            ${bullets}
+        </div>
+    `;
+}
+
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+
+function buildMovieMetadata(movie) {
+    const parts = [];
+
+    if (Number(movie?.year) > 0) {
+        parts.push(`Год: ${movie.year}`);
+    }
+
+    if (movie?.directors) {
+        parts.push(`Режиссёр: ${escapeHtml(movie.directors)}`);
+    }
+
+    if (movie?.actors) {
+        parts.push(`Актёры: ${escapeHtml(movie.actors)}`);
+    }
+
+    return parts.join(' • ');
+}

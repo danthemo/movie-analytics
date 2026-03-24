@@ -1,10 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
+	"github.com/danthemo/movie-analytics/internal/ai"
 	"github.com/danthemo/movie-analytics/internal/api/handlers"
 	"github.com/danthemo/movie-analytics/internal/db"
+	"github.com/danthemo/movie-analytics/internal/pythonclient"
 	"github.com/danthemo/movie-analytics/internal/repository"
 	"github.com/danthemo/movie-analytics/internal/service"
 	"github.com/danthemo/movie-analytics/pkg/config"
@@ -22,7 +27,11 @@ func main() {
 	logger.Info("Запуск сервера")
 
 	// Подключаем базу
-	database := db.Connect()
+	database, err := db.Connect(cfg.DatabaseURL)
+	if err != nil {
+		logger.Fatalln("Не удалось подключиться к БД: " + err.Error())
+	}
+	logger.Info("Connected to DB")
 
 	// Репозитории
 	movieRepo := repository.NewMovieRepository(database)
@@ -30,8 +39,10 @@ func main() {
 	insightRepo := repository.NewMovieInsightRepository(database)
 
 	// Сервис
-	insightService := service.NewInsightService(commentRepo, insightRepo)
-	scrapeService := service.NewMovieScrapeService(movieRepo, commentRepo, insightService)
+	pythonClient := pythonclient.NewClient(cfg.PythonServiceURL, cfg.PythonRequestTimeout)
+	aiClient := ai.NewClient(cfg)
+	insightService := service.NewInsightService(commentRepo, insightRepo, aiClient)
+	scrapeService := service.NewMovieScrapeService(movieRepo, commentRepo, insightService, pythonClient)
 	movieService := service.NewMovieService(movieRepo, commentRepo, insightRepo)
 
 	// Handler
@@ -57,19 +68,69 @@ func main() {
 
 	mux.HandleFunc("/api/search", moviesHandler.SearchMovies)
 	mux.HandleFunc("/api/movies/insights", moviesHandler.GetMovieInsights)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `{"status":"ok"}`)
+	})
+
+	if staticDir, err := findFrontendDir(); err == nil {
+		fileServer := http.FileServer(http.Dir(staticDir))
+		mux.Handle("/", fileServer)
+		logger.Info("Фронтенд раздается из " + staticDir)
+	} else {
+		logger.Warn("Не удалось подключить статические файлы фронтенда: " + err.Error())
+	}
 
 	// CORS Middleware
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:3000", "*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
-		AllowCredentials: true,
+		AllowedOrigins: []string{"http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:3000"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
 	})
 
-	handler := c.Handler(mux)
+	handler := recoveryMiddleware(c.Handler(mux))
 
 	// Запуск
 	addr := ":" + cfg.ServerPort
 	logger.Info("🚀 Сервер запущен на http://localhost" + addr)
-	http.ListenAndServe(addr, handler)
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		logger.Fatalln("Ошибка HTTP сервера: " + err.Error())
+	}
+}
+
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				logger.Error(fmt.Errorf("panic recovered: %v", recovered))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintln(w, `{"error":"internal server error"}`)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func findFrontendDir() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	directPath := filepath.Join(wd, "frontend")
+	if _, err := os.Stat(filepath.Join(directPath, "index.html")); err == nil {
+		return directPath, nil
+	}
+
+	parentPath := filepath.Join(wd, "..", "..", "frontend")
+	if _, err := os.Stat(filepath.Join(parentPath, "index.html")); err == nil {
+		return parentPath, nil
+	}
+
+	return "", fmt.Errorf("frontend directory not found")
 }
